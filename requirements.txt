@@ -1,0 +1,9 @@
+ccxt
+pytz
+pandas
+datetime
+loguru
+facade
+pyyaml
+telegram
+schedule

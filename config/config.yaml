@@ -1,0 +1,18 @@
+algo_10m_btc:
+  BTC_10M_API_KEY: oy5nNF37jhgsfrRZE8
+  BTC_10M_SECRET_KEY: K9Qj23Kv9ceovcMtd4MrgIoJ9JbP4D9IPSAg
+
+algo_10m_eth:
+  ETH_10M_API_KEY: 7cdhSfRcPeLmvifXIZ
+  ETH_10M_SECRET_KEY: 8a0zbBmvOm5Nk32ZMp2gQCfWq4edeJ10iMCD
+
+algo_10m_sol:
+  SOL_10M_API_KEY: 5JIg7nkYxCKMXiR3wG
+  SOL_10M_SECRET_KEY: x7ZYcwik03QHfbtJnhMl8bAK7hypAPhJSXQx
+
+grassnode:
+  GN_API: 2wlOd0ApVQgg4SDPqFk2Lq2Btku
+
+tg_bot:
+  TOKEN: 8022395376:AAGC6r3pNGq1PBodeMZ3leYxhqgGaKr51rs
+  GROUP_ID: 8394621040

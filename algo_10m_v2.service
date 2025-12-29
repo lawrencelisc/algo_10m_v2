@@ -1,0 +1,14 @@
+[Unit]
+Description=algo_10m_pro
+
+[Service]
+Type=simple
+WorkingDirectory=/usr/local/app/algo_10m_v2
+ExecStart=/usr/local/app/algo_10m_v2/venv/bin/python3.12 main.py
+StandardOutput=syslog
+Restart=always
+RestartSec=2
+User=root
+
+[Install]
+WantedBy=multi-user.target
