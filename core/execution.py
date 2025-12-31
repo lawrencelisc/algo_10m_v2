@@ -75,7 +75,7 @@ class TelegramNotifier:
         """異步發送消息（立即返回）"""
         self._start_worker()
         self.queue.put({'message': txt_msg, 'context': context})
-        logger.info(f'📬 TG queued ({context}), size: {self.queue.qsize()}')
+        logger.info(f'TG queued ({context}), size: {self.queue.qsize()}')
 
     def wait(self, timeout: int = 60):
         """等待所有消息發送完成"""
