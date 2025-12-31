@@ -55,5 +55,5 @@ def algo_seq(BET_SIZE):
 
 # main to start
 if __name__ == '__main__':
-    BET_SIZE = {'BTC': 0.01, 'ETH': 1}
+    BET_SIZE = {'BTC': 0.01, 'ETH': 0.1, 'SOL': 0.1}
     algo_seq(BET_SIZE)
