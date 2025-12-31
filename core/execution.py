@@ -5,6 +5,7 @@ import gc
 import sys
 import pandas as pd
 from loguru import logger
+import requests
 
 from pathlib import Path
 from datetime import datetime, timezone
@@ -69,8 +70,8 @@ class SignalExecution:
                 txt_msg: str = tg.paradict_to_txt(status_str, pos_status)
                 try:
                     tg.send_df_msg(txt_msg)
-                except requests.exceptions.ConnectionError:
-                    logger.error(f'Warning: Could not send Telegram notification')
+                except (requests.exceptions.ConnectionError, requests.exceptions.RequestException) as e:
+                    logger.warning(f'Could not send Telegram notification (pos_adj): {e}')
             else:
                 logger.info(f'{symbol} has no adjustment required')
 
@@ -174,6 +175,10 @@ class SignalExecution:
                 prev_signal_df = pd.read_csv(self.prev_signal_path)
             except pd.errors.EmptyDataError:
                 prev_signal_df = pd.DataFrame()
+                logger.error(f'Failed to read existing CSV {self.prev_signal_filename}')
+            except Exception as e:
+                prev_signal_df = signal_df.copy()
+                prev_signal_df['signal'] = 0
                 logger.error(f'Failed to read existing CSV {self.prev_signal_filename}: {e}')
         else:
             prev_signal_df = signal_df.copy()
@@ -210,8 +215,8 @@ class SignalExecution:
         txt_msg: str = tg.result_signal_df_to_txt(result_signal_df)
         try:
             tg.send_df_msg(txt_msg)
-        except requests.exceptions.ConnectionError:
-            logger.error(f'Warning: Could not send Telegram notification')
+        except (requests.exceptions.ConnectionError, requests.exceptions.RequestException) as e:
+            logger.warning(f'Could not send Telegram notification (result_signal_df): {e}')
 
         file_exists = os.path.isfile(self.signal_plus_path)
         result_signal_df.to_csv(
@@ -370,8 +375,8 @@ class SignalExecution:
                 txt_msg: str = tg.paradict_to_txt(status_str, pos_status)
                 try:
                     tg.send_df_msg(txt_msg)
-                except requests.exceptions.ConnectionError:
-                    logger.error(f'Warning: Could not send Telegram notification')
+                except (requests.exceptions.ConnectionError, requests.exceptions.RequestException) as e:
+                    logger.warning(f'Could not send Telegram notification (pos_status AFTER): {e}')
 
         # check adjustment
         self.pos_adj()

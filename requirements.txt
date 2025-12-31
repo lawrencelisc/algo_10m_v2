@@ -7,3 +7,4 @@ facade
 pyyaml
 telegram
 schedule
+requests
