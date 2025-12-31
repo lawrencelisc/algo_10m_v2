@@ -6,6 +6,8 @@ import sys
 import pandas as pd
 from loguru import logger
 import requests
+from threading import Thread
+from queue import Queue
 
 from pathlib import Path
 from datetime import datetime, timezone
@@ -34,92 +36,112 @@ class SignalExecution:
     def __init__(self, signal_df: pd.DataFrame, bet_size: dict):
         self.signal_df = signal_df
         self.bet_size = bet_size
+        # 創建消息隊列用於異步發送
+        self.tg_queue = Queue()
+        self.tg_worker_thread = None
+        self._start_tg_worker()
         return None
 
-    def send_tg_notification(self, tg: SendTGBot, txt_msg: str, context: str = "", max_retries: int = 3):
-        """
-        Send Telegram notification with timeout, retry mechanism and message splitting.
+    def _start_tg_worker(self):
+        """啟動 Telegram 發送工作線程"""
+        if self.tg_worker_thread is None or not self.tg_worker_thread.is_alive():
+            self.tg_worker_thread = Thread(target=self._tg_worker, daemon=True)
+            self.tg_worker_thread.start()
+            logger.info('📤 Telegram worker thread started')
 
-        Args:
-            tg: SendTGBot instance
-            txt_msg: Message to send
-            context: Description of what notification is for (for logging)
-            max_retries: Maximum number of retry attempts (default: 3)
+    def _tg_worker(self):
+        """後台工作線程，處理 Telegram 消息隊列"""
+        tg = SendTGBot()
 
-        Returns:
-            bool: True if at least one attempt succeeded, False otherwise
-        """
-        MAX_LENGTH = 3800  # Telegram limit is ~4096, use 3800 to be safe
-
-        # Split message if too long
-        if len(txt_msg) > MAX_LENGTH:
-            parts = [txt_msg[i:i + MAX_LENGTH] for i in range(0, len(txt_msg), MAX_LENGTH)]
-            logger.info(f'Message too long ({len(txt_msg)} chars), splitting into {len(parts)} parts ({context})')
-
-            all_success = True
-            for i, part in enumerate(parts, 1):
-                header = f"📨 [Part {i}/{len(parts)}] {context}\n{'=' * 40}\n\n"
-                success = self._send_single_message(tg, header + part, f"{context} (part {i}/{len(parts)})",
-                                                    max_retries)
-
-                if not success:
-                    all_success = False
-
-                # Small delay between parts to avoid rate limiting
-                if i < len(parts):
-                    time.sleep(0.5)
-
-            return all_success
-        else:
-            # Single message
-            return self._send_single_message(tg, txt_msg, context, max_retries)
-
-    def _send_single_message(self, tg: SendTGBot, txt_msg: str, context: str, max_retries: int) -> bool:
-        """
-        Internal method to send a single message with retry logic.
-
-        Args:
-            tg: SendTGBot instance
-            txt_msg: Message to send
-            context: Context description
-            max_retries: Maximum retry attempts
-
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        for attempt in range(1, max_retries + 1):
+        while True:
             try:
-                success = tg.send_df_msg(txt_msg, timeout=15)
+                # 從隊列獲取消息（阻塞等待）
+                message_data = self.tg_queue.get()
 
-                if success:
-                    logger.info(f'✓ Telegram notification sent successfully ({context})')
-                    return True
-                else:
-                    logger.warning(
-                        f'✗ Telegram notification failed (returned False), attempt {attempt}/{max_retries} ({context})')
+                # 檢查是否為停止信號
+                if message_data is None:
+                    logger.info('🛑 Telegram worker received stop signal')
+                    break
 
-            except requests.exceptions.Timeout:
-                logger.warning(f'⏱ Telegram request timed out after 15s, attempt {attempt}/{max_retries} ({context})')
+                txt_msg = message_data['message']
+                context = message_data['context']
 
-            except requests.exceptions.ConnectionError as e:
-                logger.warning(f'🔌 Connection error, attempt {attempt}/{max_retries} ({context}): {str(e)[:100]}')
+                # 直接發送消息（無重試、無分割）
+                try:
+                    success = tg.send_df_msg(txt_msg, timeout=15)
 
-            except requests.exceptions.RequestException as e:
-                logger.warning(f'📡 Request failed, attempt {attempt}/{max_retries} ({context}): {str(e)[:100]}')
+                    if success:
+                        logger.info(f'✓ Telegram notification sent ({context})')
+                    else:
+                        logger.warning(f'✗ Telegram notification failed ({context})')
+
+                except Exception as e:
+                    logger.error(f'❌ Telegram send error ({context}): {type(e).__name__} - {str(e)[:200]}')
+
+                # 標記任務完成
+                self.tg_queue.task_done()
 
             except Exception as e:
-                logger.warning(
-                    f'⚠️ Unexpected error, attempt {attempt}/{max_retries} ({context}): {type(e).__name__} - {str(e)[:100]}')
+                logger.error(f'❌ Telegram worker error: {type(e).__name__} - {str(e)}')
 
-            # Wait before retry (exponential backoff: 2s, 4s, 6s...)
-            if attempt < max_retries:
-                wait_time = attempt * 2
-                logger.info(f'⏳ Retrying in {wait_time} seconds...')
-                time.sleep(wait_time)
+    def send_tg_notification(self, tg: SendTGBot, txt_msg: str, context: str = ""):
+        """
+        異步發送 Telegram 通知（立即返回，不阻塞）
 
-        # All retries failed
-        logger.error(f'❌ Failed to send Telegram notification after {max_retries} attempts ({context})')
-        return False
+        Args:
+            tg: SendTGBot instance (保留此參數以兼容現有調用，但實際使用內部 tg)
+            txt_msg: Message to send
+            context: Description of what notification is for
+
+        Returns:
+            None (立即返回，不等待發送完成)
+        """
+        # 確保工作線程正在運行
+        self._start_tg_worker()
+
+        # 將消息加入隊列
+        message_data = {
+            'message': txt_msg,
+            'context': context
+        }
+        self.tg_queue.put(message_data)
+        logger.info(f'📬 Telegram message queued ({context}), queue size: {self.tg_queue.qsize()}')
+
+    def wait_for_tg_notifications(self, timeout: int = 60):
+        """
+        等待所有 Telegram 通知發送完成
+
+        Args:
+            timeout: 最大等待時間（秒）
+
+        Returns:
+            bool: True if all sent, False if timeout
+        """
+        queue_size = self.tg_queue.qsize()
+        if queue_size == 0:
+            logger.info('✓ No pending Telegram notifications')
+            return True
+
+        logger.info(f'⏳ Waiting for {queue_size} Telegram notifications to complete (timeout: {timeout}s)...')
+
+        try:
+            # 等待隊列清空
+            self.tg_queue.join()
+            logger.info('✓ All Telegram notifications completed')
+            return True
+
+        except Exception as e:
+            logger.error(f'❌ Error waiting for Telegram notifications: {e}')
+            return False
+
+    def stop_tg_worker(self):
+        """停止 Telegram 工作線程"""
+        if self.tg_worker_thread and self.tg_worker_thread.is_alive():
+            # 發送停止信號
+            self.tg_queue.put(None)
+            # 等待線程結束
+            self.tg_worker_thread.join(timeout=5)
+            logger.info('🛑 Telegram worker thread stopped')
 
     # make position adjustment if find mismtach
     def pos_adj(self):
@@ -452,4 +474,8 @@ class SignalExecution:
 
         # check adjustment
         self.pos_adj()
+
+        # 等待所有 Telegram 通知發送完成（可選）
+        self.wait_for_tg_notifications(timeout=60)
+
         gc.collect
