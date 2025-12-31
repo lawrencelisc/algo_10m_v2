@@ -67,7 +67,10 @@ class SignalExecution:
                 pos_status: dict = self.get_pos_status(symbol)
                 status_str: str = 'pos_status (ADJ)'
                 txt_msg: str = tg.paradict_to_txt(status_str, pos_status)
-                tg.send_df_msg(txt_msg)
+                try:
+                    tg.send_df_msg(txt_msg)
+                except requests.exceptions.ConnectionError:
+                    logger.error(f'Warning: Could not send Telegram notification')
             else:
                 logger.info(f'{symbol} has no adjustment required')
 
@@ -205,7 +208,10 @@ class SignalExecution:
         print(result_signal_df)
 
         txt_msg: str = tg.result_signal_df_to_txt(result_signal_df)
-        tg.send_df_msg(txt_msg)
+        try:
+            tg.send_df_msg(txt_msg)
+        except requests.exceptions.ConnectionError:
+            logger.error(f'Warning: Could not send Telegram notification')
 
         file_exists = os.path.isfile(self.signal_plus_path)
         result_signal_df.to_csv(
@@ -362,7 +368,10 @@ class SignalExecution:
                 pos_status: dict = self.get_pos_status(symbol)
                 status_str: str = 'pos_status (AFTER)'
                 txt_msg: str = tg.paradict_to_txt(status_str, pos_status)
-                tg.send_df_msg(txt_msg)
+                try:
+                    tg.send_df_msg(txt_msg)
+                except requests.exceptions.ConnectionError:
+                    logger.error(f'Warning: Could not send Telegram notification')
 
         # check adjustment
         self.pos_adj()
