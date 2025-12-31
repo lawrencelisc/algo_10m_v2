@@ -3,9 +3,10 @@ import ccxt
 import os
 import gc
 import sys
+import requests
 import pandas as pd
 from loguru import logger
-import requests
+
 from threading import Thread
 from queue import Queue
 
