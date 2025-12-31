@@ -56,6 +56,7 @@ class SignalExecution:
         except Exception as e:
             logger.warning(f'Unexpected error sending Telegram notification ({context}): {e}')
 
+
     # make position adjustment if find mismtach
     def pos_adj(self):
         tg = SendTGBot()
@@ -92,6 +93,7 @@ class SignalExecution:
             else:
                 logger.info(f'{symbol} has no adjustment required')
 
+
     # get bybit api via ccxt
     def get_exchange_info(self, symbol: str):
         try:
@@ -114,6 +116,7 @@ class SignalExecution:
             logger.error('No matching market for %s', symbol)
             return None
         gc.collect
+
 
     def get_pos_status(self, symbol: str):
         # initialization
@@ -207,6 +210,7 @@ class SignalExecution:
         gc.collect
         return signal_df_s1
 
+
     def create_market_order(self):
         tg = SendTGBot()
         signal_df = self.signal_df
@@ -225,7 +229,8 @@ class SignalExecution:
         print('===================== result_signal_df =====================')
         print(result_signal_df)
 
-        txt_msg: str = tg.result_signal_df_to_txt(result_signal_df)
+        txt_msg = tg.result_signal_df_to_txt(result_signal_df)
+        print('txt_msg (result_signal_df): ', txt_msg)
         self.send_tg_notification(tg, txt_msg, "result_signal_df")
 
         file_exists = os.path.isfile(self.signal_plus_path)
@@ -382,7 +387,8 @@ class SignalExecution:
 
                 pos_status: dict = self.get_pos_status(symbol)
                 status_str: str = 'pos_status (AFTER)'
-                txt_msg: str = tg.paradict_to_txt(status_str, pos_status)
+                txt_msg = tg.paradict_to_txt(status_str, pos_status)
+                print('txt_msg (pos_status): ', txt_msg)
                 self.send_tg_notification(tg, txt_msg, f"pos_status AFTER - {symbol}")
 
         # check adjustment
