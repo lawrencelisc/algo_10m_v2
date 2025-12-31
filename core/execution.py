@@ -388,9 +388,8 @@ class SignalExecution:
                         (result_signal_df['signal_plus'] == '-10')
                         ]
                     trade.trade_record_combine(after_signal_df, record_df)
-
+                time.sleep(3)
                 pos_status: dict = self.get_pos_status(symbol)
-                sleep(5)
                 txt_msg = tg.paradict_to_txt('pos_status (AFTER)', pos_status)
                 self.tg_notifier.send(txt_msg, f"pos_status AFTER - {symbol}")
 
