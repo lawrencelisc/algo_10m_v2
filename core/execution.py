@@ -37,14 +37,14 @@ class SignalExecution:
         return None
 
     def send_tg_notification(self, tg: SendTGBot, txt_msg: str, context: str = ""):
-        """
-        Send Telegram notification with timeout and exception handling.
 
-        Args:
-            tg: SendTGBot instance
-            txt_msg: Message to send
-            context: Description of what notification is for (for logging)
-        """
+        # Send Telegram notification with timeout and exception handling.
+        #
+        # Args:
+        #     tg: SendTGBot instance
+        #     txt_msg: Message to send
+        #     context: Description of what notification is for (for logging)
+
         try:
             tg.send_df_msg(txt_msg, timeout=5)
         except requests.exceptions.Timeout:
