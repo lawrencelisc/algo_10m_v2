@@ -46,9 +46,9 @@ class SignalExecution:
         #     context: Description of what notification is for (for logging)
 
         try:
-            tg.send_df_msg(txt_msg, timeout=5)
+            tg.send_df_msg(txt_msg, timeout=15)
         except requests.exceptions.Timeout:
-            logger.warning(f'Telegram notification timed out after 5 seconds ({context})')
+            logger.warning(f'Telegram notification timed out after 15 seconds ({context})')
         except requests.exceptions.ConnectionError as e:
             logger.warning(f'Telegram notification failed - connection error ({context}): {e}')
         except requests.exceptions.RequestException as e:
@@ -230,7 +230,6 @@ class SignalExecution:
         print(result_signal_df)
 
         txt_msg = tg.result_signal_df_to_txt(result_signal_df)
-        print('txt_msg (result_signal_df): ', txt_msg)
         self.send_tg_notification(tg, txt_msg, "result_signal_df")
 
         file_exists = os.path.isfile(self.signal_plus_path)
@@ -388,7 +387,6 @@ class SignalExecution:
                 pos_status: dict = self.get_pos_status(symbol)
                 status_str: str = 'pos_status (AFTER)'
                 txt_msg = tg.paradict_to_txt(status_str, pos_status)
-                print('txt_msg (pos_status): ', txt_msg)
                 self.send_tg_notification(tg, txt_msg, f"pos_status AFTER - {symbol}")
 
         # check adjustment
