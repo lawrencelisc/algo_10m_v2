@@ -36,26 +36,90 @@ class SignalExecution:
         self.bet_size = bet_size
         return None
 
-    def send_tg_notification(self, tg: SendTGBot, txt_msg: str, context: str = ""):
+    def send_tg_notification(self, tg: SendTGBot, txt_msg: str, context: str = "", max_retries: int = 3):
+        """
+        Send Telegram notification with timeout, retry mechanism and message splitting.
 
-        # Send Telegram notification with timeout and exception handling.
-        #
-        # Args:
-        #     tg: SendTGBot instance
-        #     txt_msg: Message to send
-        #     context: Description of what notification is for (for logging)
+        Args:
+            tg: SendTGBot instance
+            txt_msg: Message to send
+            context: Description of what notification is for (for logging)
+            max_retries: Maximum number of retry attempts (default: 3)
 
-        try:
-            tg.send_df_msg(txt_msg, timeout=15)
-        except requests.exceptions.Timeout:
-            logger.warning(f'Telegram notification timed out after 15 seconds ({context})')
-        except requests.exceptions.ConnectionError as e:
-            logger.warning(f'Telegram notification failed - connection error ({context}): {e}')
-        except requests.exceptions.RequestException as e:
-            logger.warning(f'Telegram notification failed ({context}): {e}')
-        except Exception as e:
-            logger.warning(f'Unexpected error sending Telegram notification ({context}): {e}')
+        Returns:
+            bool: True if at least one attempt succeeded, False otherwise
+        """
+        MAX_LENGTH = 3800  # Telegram limit is ~4096, use 3800 to be safe
 
+        # Split message if too long
+        if len(txt_msg) > MAX_LENGTH:
+            parts = [txt_msg[i:i + MAX_LENGTH] for i in range(0, len(txt_msg), MAX_LENGTH)]
+            logger.info(f'Message too long ({len(txt_msg)} chars), splitting into {len(parts)} parts ({context})')
+
+            all_success = True
+            for i, part in enumerate(parts, 1):
+                header = f"📨 [Part {i}/{len(parts)}] {context}\n{'=' * 40}\n\n"
+                success = self._send_single_message(tg, header + part, f"{context} (part {i}/{len(parts)})",
+                                                    max_retries)
+
+                if not success:
+                    all_success = False
+
+                # Small delay between parts to avoid rate limiting
+                if i < len(parts):
+                    time.sleep(0.5)
+
+            return all_success
+        else:
+            # Single message
+            return self._send_single_message(tg, txt_msg, context, max_retries)
+
+    def _send_single_message(self, tg: SendTGBot, txt_msg: str, context: str, max_retries: int) -> bool:
+        """
+        Internal method to send a single message with retry logic.
+
+        Args:
+            tg: SendTGBot instance
+            txt_msg: Message to send
+            context: Context description
+            max_retries: Maximum retry attempts
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        for attempt in range(1, max_retries + 1):
+            try:
+                success = tg.send_df_msg(txt_msg, timeout=15)
+
+                if success:
+                    logger.info(f'✓ Telegram notification sent successfully ({context})')
+                    return True
+                else:
+                    logger.warning(
+                        f'✗ Telegram notification failed (returned False), attempt {attempt}/{max_retries} ({context})')
+
+            except requests.exceptions.Timeout:
+                logger.warning(f'⏱ Telegram request timed out after 15s, attempt {attempt}/{max_retries} ({context})')
+
+            except requests.exceptions.ConnectionError as e:
+                logger.warning(f'🔌 Connection error, attempt {attempt}/{max_retries} ({context}): {str(e)[:100]}')
+
+            except requests.exceptions.RequestException as e:
+                logger.warning(f'📡 Request failed, attempt {attempt}/{max_retries} ({context}): {str(e)[:100]}')
+
+            except Exception as e:
+                logger.warning(
+                    f'⚠️ Unexpected error, attempt {attempt}/{max_retries} ({context}): {type(e).__name__} - {str(e)[:100]}')
+
+            # Wait before retry (exponential backoff: 2s, 4s, 6s...)
+            if attempt < max_retries:
+                wait_time = attempt * 2
+                logger.info(f'⏳ Retrying in {wait_time} seconds...')
+                time.sleep(wait_time)
+
+        # All retries failed
+        logger.error(f'❌ Failed to send Telegram notification after {max_retries} attempts ({context})')
+        return False
 
     # make position adjustment if find mismtach
     def pos_adj(self):
@@ -89,10 +153,9 @@ class SignalExecution:
                 pos_status: dict = self.get_pos_status(symbol)
                 status_str: str = 'pos_status (ADJ)'
                 txt_msg: str = tg.paradict_to_txt(status_str, pos_status)
-                self.send_tg_notification(tg, txt_msg, "pos_adj")
+                self.send_tg_notification(tg, txt_msg, f"pos_adj - {symbol}")
             else:
                 logger.info(f'{symbol} has no adjustment required')
-
 
     # get bybit api via ccxt
     def get_exchange_info(self, symbol: str):
@@ -116,7 +179,6 @@ class SignalExecution:
             logger.error('No matching market for %s', symbol)
             return None
         gc.collect
-
 
     def get_pos_status(self, symbol: str):
         # initialization
@@ -209,7 +271,6 @@ class SignalExecution:
         signal_df_s1 = signal_df_s1.drop(columns=['name', 'symbol', 'saved_csv'])
         gc.collect
         return signal_df_s1
-
 
     def create_market_order(self):
         tg = SendTGBot()
