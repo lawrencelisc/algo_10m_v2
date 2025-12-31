@@ -1,0 +1,3 @@
+name,symbol,endpt_col,strat,mode,short_rol,long_rol,ma_rol,atr_rol,rol,thres,num_std,exit_thres,sl_multi,tp_multi,confirm_bars,min_hold,max_hold,cooldown,url
+201_market_price_usd_ohlc,BTC,ohlc,zscore_atr,long_short,,,50,5,30,2,,1,1.5,3,,,50,,share_algoB/bybit_data/0A_market_price_usd_ohlc_BTC.csv
+202_market_price_usd_ohlc,BTC,ohlc,zscore_atr,long,,,50,5,30,2,,1,1.5,3,,,50,,share_algoB/bybit_data/0A_market_price_usd_ohlc_BTC.csv
