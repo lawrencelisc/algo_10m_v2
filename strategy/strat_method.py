@@ -322,7 +322,7 @@ class CreateSignal:
 
         signal: int = 0
         atr_min: float = 0.3
-        atr_max: float = 3.0
+        atr_max: float = 2.5
         name: str = str(row['name'])
         symbol: str = str(row['symbol'])
         endpt_col: str = str(row['endpt_col'])
@@ -337,8 +337,10 @@ class CreateSignal:
 
         sl_multi: float = float(row['sl_multi'])
         tp_multi: float = float(row['tp_multi'])
+        trailing_multi: float = float(row['trailing_multi'])  # ADD THIS LINE
         max_hold: int = int(row['max_hold'])
         use_sl: bool = sl_multi > 0
+        use_trailing: bool = trailing_multi > 0  # ADD THIS LINE
 
         strat_filename: str = f'{name}_{endpt_col}_{symbol}.csv'
         file_path = self.strat_folder / strat_filename
@@ -374,6 +376,7 @@ class CreateSignal:
         df['hold_days'] = 0                                 # 完成交易的持倉期數
         df['entry_price'] = np.nan                          # 進場價格
         df['entry_atr'] = np.nan                            # 進場時的 ATR
+        df['best_price'] = np.nan                           # Track best price achieved
         df['exit_price'] = np.nan                           # 出場價格
         df['pnl'] = 0.0                                     # 單筆損益
         df['exit_reason'] = ''                              # 出場原因
@@ -394,9 +397,23 @@ class CreateSignal:
                 entry_price = df.loc[idx, 'entry_price']
                 entry_atr = df.loc[idx, 'entry_atr']
 
+                # Update best price for long (highest high achieved)
+                prev_best = df.loc[prev_idx, 'best_price']
+                if pd.isna(prev_best):
+                    df.loc[idx, 'best_price'] = df.loc[idx, 'high']
+                else:
+                    df.loc[idx, 'best_price'] = max(prev_best, df.loc[idx, 'high'])
+
+                best_price = df.loc[idx, 'best_price']
+
                 # 止盈
                 if df.loc[idx, 'high'] >= entry_price + (tp_multi * entry_atr):
                     zscore_close_pos(df, i, entry_price + (tp_multi * entry_atr), 'TP', 1)
+
+                # 追蹤止損 (Trailing Stop) - CHECK FIRST before other exits
+                elif use_trailing and not pd.isna(best_price) and \
+                        df.loc[idx, 'low'] <= best_price - (trailing_multi * entry_atr):
+                    zscore_close_pos(df, i, best_price - (trailing_multi * entry_atr), 'TRAIL', 1)
 
                 # Z-Score 回歸
                 elif df.loc[idx, 'zscore'] >= -thres_exit:
@@ -420,9 +437,23 @@ class CreateSignal:
                 entry_price = df.loc[idx, 'entry_price']
                 entry_atr = df.loc[idx, 'entry_atr']
 
+                # Update best price for short (lowest low achieved)
+                prev_best = df.loc[prev_idx, 'best_price']
+                if pd.isna(prev_best):
+                    df.loc[idx, 'best_price'] = df.loc[idx, 'low']
+                else:
+                    df.loc[idx, 'best_price'] = min(prev_best, df.loc[idx, 'low'])
+
+                best_price = df.loc[idx, 'best_price']
+
                 # 止盈
                 if df.loc[idx, 'low'] <= entry_price - (tp_multi * entry_atr):
                     zscore_close_pos(df, i, entry_price - (tp_multi * entry_atr), 'TP', -1)
+
+                # 追蹤止損 (Trailing Stop) - CHECK FIRST before other exits
+                elif use_trailing and not pd.isna(best_price) and \
+                        df.loc[idx, 'high'] >= best_price + (trailing_multi * entry_atr):
+                    zscore_close_pos(df, i, best_price + (trailing_multi * entry_atr), 'TRAIL', -1)
 
                 # Z-Score 回歸
                 elif df.loc[idx, 'zscore'] <= thres_exit:
@@ -449,6 +480,7 @@ class CreateSignal:
                         df.loc[idx, 'hold_period'] = 0
                         df.loc[idx, 'entry_price'] = df.loc[idx, 'close']
                         df.loc[idx, 'entry_atr'] = df.loc[idx, 'atr']
+                        df.loc[idx, 'best_price'] = df.loc[idx, 'high']  # ADD THIS LINE
 
                 # Short 開倉
                 elif allow_short and df.loc[idx, 'zscore'] > thres_entry:
@@ -458,6 +490,7 @@ class CreateSignal:
                         df.loc[idx, 'hold_period'] = 0
                         df.loc[idx, 'entry_price'] = df.loc[idx, 'close']
                         df.loc[idx, 'entry_atr'] = df.loc[idx, 'atr']
+                        df.loc[idx, 'best_price'] = df.loc[idx, 'low']  # ADD THIS LINE
 
         df.to_csv(file_path)
         signal = df['pos'].iloc[-1]
