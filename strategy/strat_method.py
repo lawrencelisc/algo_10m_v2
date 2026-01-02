@@ -406,12 +406,16 @@ class CreateSignal:
 
                 best_price = df.loc[idx, 'best_price']
 
+                # ADD THIS LINE - Calculate profit in ATR multiples
+                profit_in_atr = (best_price - entry_price) / entry_atr if entry_atr > 0 else 0
+
                 # 止盈
                 if df.loc[idx, 'high'] >= entry_price + (tp_multi * entry_atr):
                     zscore_close_pos(df, i, entry_price + (tp_multi * entry_atr), 'TP', 1)
 
                 # 追蹤止損 (Trailing Stop) - CHECK FIRST before other exits
                 elif use_trailing and not pd.isna(best_price) and \
+                        profit_in_atr >= 1.0 and \
                         df.loc[idx, 'low'] <= best_price - (trailing_multi * entry_atr):
                     zscore_close_pos(df, i, best_price - (trailing_multi * entry_atr), 'TRAIL', 1)
 
@@ -446,12 +450,16 @@ class CreateSignal:
 
                 best_price = df.loc[idx, 'best_price']
 
+                # ADD THIS LINE
+                profit_in_atr = (entry_price - best_price) / entry_atr if entry_atr > 0 else 0
+
                 # 止盈
                 if df.loc[idx, 'low'] <= entry_price - (tp_multi * entry_atr):
                     zscore_close_pos(df, i, entry_price - (tp_multi * entry_atr), 'TP', -1)
 
                 # 追蹤止損 (Trailing Stop) - CHECK FIRST before other exits
                 elif use_trailing and not pd.isna(best_price) and \
+                        profit_in_atr >= 1.0 and \
                         df.loc[idx, 'high'] >= best_price + (trailing_multi * entry_atr):
                     zscore_close_pos(df, i, best_price + (trailing_multi * entry_atr), 'TRAIL', -1)
 
