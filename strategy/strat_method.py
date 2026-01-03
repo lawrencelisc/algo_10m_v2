@@ -322,7 +322,7 @@ class CreateSignal:
 
         signal: int = 0
         atr_min: float = 0.3
-        atr_max: float = 2.5
+        atr_max: float = 2.7
         name: str = str(row['name'])
         symbol: str = str(row['symbol'])
         endpt_col: str = str(row['endpt_col'])
@@ -337,10 +337,13 @@ class CreateSignal:
 
         sl_multi: float = float(row['sl_multi'])
         tp_multi: float = float(row['tp_multi'])
-        trailing_multi: float = float(row['trailing_multi'])  # ADD THIS LINE
+        trailing_multi: float = float(row['trailing_multi'])
         max_hold: int = int(row['max_hold'])
+
+        breakeven_threshold: float = float(row.get('breakeven_thres', 0.5))  # 默認 0.5 ATR
         use_sl: bool = sl_multi > 0
-        use_trailing: bool = trailing_multi > 0  # ADD THIS LINE
+        use_trailing: bool = trailing_multi > 0
+        use_breakeven: bool = breakeven_threshold > 0
 
         strat_filename: str = f'{name}_{endpt_col}_{symbol}.csv'
         file_path = self.strat_folder / strat_filename
@@ -405,29 +408,37 @@ class CreateSignal:
                     df.loc[idx, 'best_price'] = max(prev_best, df.loc[idx, 'high'])
 
                 best_price = df.loc[idx, 'best_price']
-
-                # ADD THIS LINE - Calculate profit in ATR multiples
+                # Calculate profit in ATR multiples
                 profit_in_atr = (best_price - entry_price) / entry_atr if entry_atr > 0 else 0
 
-                # 止盈
+                # 🆕 計算當前未實現獲利 (用於盈虧平衡止損)
+                current_profit_atr = (df.loc[idx, 'close'] - entry_price) / entry_atr if entry_atr > 0 else 0
+
+                # ===== 出場優先級 =====
+
+                # 1. 止盈 (最優先)
                 if df.loc[idx, 'high'] >= entry_price + (tp_multi * entry_atr):
                     zscore_close_pos(df, i, entry_price + (tp_multi * entry_atr), 'TP', 1)
 
-                # 追蹤止損 (Trailing Stop) - CHECK FIRST before other exits
-                elif use_trailing and not pd.isna(best_price) and \
-                        profit_in_atr >= 1.0 and \
+                # 2. 追蹤止損 (Trailing Stop) - CHECK FIRST before other exits
+                elif use_trailing and profit_in_atr >= 1.0 and \
                         df.loc[idx, 'low'] <= best_price - (trailing_multi * entry_atr):
                     zscore_close_pos(df, i, best_price - (trailing_multi * entry_atr), 'TRAIL', 1)
 
-                # Z-Score 回歸
+                # 3. 盈虧平衡止損 (獲利達標但未達追蹤止損條件)
+                elif use_breakeven and current_profit_atr >= breakeven_threshold and \
+                        df.loc[idx, 'low'] <= entry_price:
+                    zscore_close_pos(df, i, entry_price, 'BREAKEVEN', 1)
+
+                # 4. Z-Score 回歸
                 elif df.loc[idx, 'zscore'] >= -thres_exit:
                     zscore_close_pos(df, i, df.loc[idx, 'close'], 'ZSCORE', 1)
 
-                # 時間止損
+                # 5. 時間止損
                 elif df.loc[idx, 'hold_period'] >= max_hold:
                     zscore_close_pos(df, i, df.loc[idx, 'close'], 'TIME', 1)
 
-                # 止損
+                # 6. 止損
                 elif use_sl and df.loc[idx, 'low'] <= entry_price - (sl_multi * entry_atr):
                     zscore_close_pos(df, i, entry_price - (sl_multi * entry_atr), 'SL', 1)
 
@@ -449,29 +460,36 @@ class CreateSignal:
                     df.loc[idx, 'best_price'] = min(prev_best, df.loc[idx, 'low'])
 
                 best_price = df.loc[idx, 'best_price']
-
-                # ADD THIS LINE
                 profit_in_atr = (entry_price - best_price) / entry_atr if entry_atr > 0 else 0
 
-                # 止盈
+                # 🆕 計算當前未實現獲利
+                current_profit_atr = (entry_price - df.loc[idx, 'close']) / entry_atr if entry_atr > 0 else 0
+
+                # ===== 出場優先級 =====
+
+                # 1. 止盈
                 if df.loc[idx, 'low'] <= entry_price - (tp_multi * entry_atr):
                     zscore_close_pos(df, i, entry_price - (tp_multi * entry_atr), 'TP', -1)
 
-                # 追蹤止損 (Trailing Stop) - CHECK FIRST before other exits
-                elif use_trailing and not pd.isna(best_price) and \
-                        profit_in_atr >= 1.0 and \
+                # 2. 追蹤止損 (Trailing Stop) - CHECK FIRST before other exits
+                elif use_trailing and profit_in_atr >= 1.0 and \
                         df.loc[idx, 'high'] >= best_price + (trailing_multi * entry_atr):
                     zscore_close_pos(df, i, best_price + (trailing_multi * entry_atr), 'TRAIL', -1)
 
-                # Z-Score 回歸
+                # 3. 盈虧平衡止損
+                elif use_breakeven and current_profit_atr >= breakeven_threshold and \
+                        df.loc[idx, 'high'] >= entry_price:
+                    zscore_close_pos(df, i, entry_price, 'BREAKEVEN', -1)
+
+                # 4. Z-Score 回歸
                 elif df.loc[idx, 'zscore'] <= thres_exit:
                     zscore_close_pos(df, i, df.loc[idx, 'close'], 'ZSCORE', -1)
 
-                # 時間止損
+                # 5. 時間止損
                 elif df.loc[idx, 'hold_period'] >= max_hold:
                     zscore_close_pos(df, i, df.loc[idx, 'close'], 'TIME', -1)
 
-                # 止損
+                # 6. 止損
                 elif use_sl and df.loc[idx, 'high'] >= entry_price + (sl_multi * entry_atr):
                     zscore_close_pos(df, i, entry_price + (sl_multi * entry_atr), 'SL', -1)
 
@@ -498,7 +516,7 @@ class CreateSignal:
                         df.loc[idx, 'hold_period'] = 0
                         df.loc[idx, 'entry_price'] = df.loc[idx, 'close']
                         df.loc[idx, 'entry_atr'] = df.loc[idx, 'atr']
-                        df.loc[idx, 'best_price'] = df.loc[idx, 'low']  # ADD THIS LINE
+                        df.loc[idx, 'best_price'] = df.loc[idx, 'low']
 
         df.to_csv(file_path)
         signal = df['pos'].iloc[-1]

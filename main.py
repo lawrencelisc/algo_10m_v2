@@ -49,7 +49,7 @@ def scheduler(bet_size):
 
 
 if __name__ == '__main__':
-    BET_SIZE = {'BTC': 0.01, 'ETH': 0.1, 'SOL': 1}
+    BET_SIZE = {'BTC': 0.01, 'ETH': 0.5, 'SOL': 1, 'SUI': 100}
     xx_min = [1, 11, 21, 31, 41, 51]
 
     logger.info('Starting unified scheduler + algo program')

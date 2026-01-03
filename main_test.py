@@ -12,7 +12,7 @@ from core.orchestrator import DataSourceConfig
 from core.datacenter import DataCenterSrv
 from core.algo_strat import AlgoStrategy
 from strategy.strat_method import CreateSignal
-from core.execution import SignalExecution
+# from core.execution import SignalExecution
 
 
 # start algo sequence
@@ -55,5 +55,5 @@ def algo_seq(BET_SIZE):
 
 # main to start
 if __name__ == '__main__':
-    BET_SIZE = {'BTC': 0.01, 'ETH': 0.1, 'SOL': 1}
+    BET_SIZE = {'BTC': 0.01, 'ETH': 0.5, 'SOL': 1, 'SUI': 100}
     algo_seq(BET_SIZE)
