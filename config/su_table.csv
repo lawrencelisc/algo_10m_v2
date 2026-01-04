@@ -1,4 +1,8 @@
 name,symbol,endpt_col,strat,mode,short_rol,long_rol,ma_rol,atr_rol,rol,thres,num_std,exit_thres,sl_multi,breakeven_thres,tp_multi,trailing_multi,confirm_bars,min_hold,max_hold,cooldown,url
-203_market_price_usd_ohlc,SOL,ohlc,zscore_atr,long_short,,,25,10,30,2,,0.6,1.5,0.5,2.5,2,,,40,,share_algoB/bybit_data/0C_market_price_usd_ohlc_SOL.csv
-204_market_price_usd_ohlc,SOL,ohlc,zscore_atr,long,,,50,10,30,2,,1,1.5,0.5,3,2,,,50,,share_algoB/bybit_data/0C_market_price_usd_ohlc_SOL.csv
-205_market_price_usd_ohlc,SOL,ohlc,zscore_atr,short,,,20,15,20,1.2,,0.6,1.5,0.5,2.5,1.5,,,40,,share_algoB/bybit_data/0C_market_price_usd_ohlc_SOL.csv
+203_market_price_usd_ohlc,SOL,ohlc,zscore_atr,long_short,,,25,10,30,2.8,,0.6,2.2,0.3,2.5,2.2,,,25,,share_algoB/bybit_data/0C_market_price_usd_ohlc_SOL.csv
+204_market_price_usd_ohlc,SOL,ohlc,zscore_atr,long,,,50,10,30,2.8,,1,2.2,0.3,3,2.2,,,30,,share_algoB/bybit_data/0C_market_price_usd_ohlc_SOL.csv
+205_market_price_usd_ohlc,SOL,ohlc,zscore_atr,short,,,20,15,20,2.8,,0.6,2.2,0.3,2.5,2.2,,,35,,share_algoB/bybit_data/0C_market_price_usd_ohlc_SOL.csv
+206_market_price_usd_ohlc,BTC,ohlc,zscore_atr,long_short,,,50,6,25,2.2,,0.7,2.3,0.5,2,1,,,40,,share_algoB/bybit_data/0A_market_price_usd_ohlc_BTC.csv
+207_market_price_usd_ohlc,BTC,ohlc,zscore_atr,long,,,45,7,20,2.5,,0.7,2.5,0.5,1.8,0.7,,,35,,share_algoB/bybit_data/0A_market_price_usd_ohlc_BTC.csv
+208_market_price_usd_ohlc,ETH,ohlc,zscore_atr,long_short,,,50,20,30,2,,0.8,2,0.5,2.5,1,,,45,,share_algoB/bybit_data/0B_market_price_usd_ohlc_ETH.csv
+209_market_price_usd_ohlc,ETH,ohlc,zscore_atr,long,,,50,15,35,2,,1,2,0.5,2.5,1,,,45,,share_algoB/bybit_data/0B_market_price_usd_ohlc_ETH.csv
