@@ -357,6 +357,8 @@ class CreateSignal:
         # 趨勢線 (移動平均) trend ma
         raw_df['trend_ma'] = raw_df['close'].rolling(window=ma_rol).mean()
 
+
+
         # ATR (平均真實波幅)
         raw_df['high_low'] = raw_df['high'] - raw_df['low']
         raw_df['high_close'] = abs(raw_df['high'] - raw_df['close'].shift(1))
@@ -372,6 +374,8 @@ class CreateSignal:
                 (df['close'] - df['close'].rolling(rol).mean()) /
                 df['close'].rolling(rol).std()
         )
+
+        print(df.tail(5))
 
         # 初始化追蹤欄位
         df['pos'] = 0                                       # 持倉方向 (1=Long, -1=Short, 0=空倉)
@@ -506,7 +510,7 @@ class CreateSignal:
                         df.loc[idx, 'hold_period'] = 0
                         df.loc[idx, 'entry_price'] = df.loc[idx, 'close']
                         df.loc[idx, 'entry_atr'] = df.loc[idx, 'atr']
-                        df.loc[idx, 'best_price'] = df.loc[idx, 'high']  # ADD THIS LINE
+                        df.loc[idx, 'best_price'] = df.loc[idx, 'high']
 
                 # Short 開倉
                 elif allow_short and df.loc[idx, 'zscore'] > thres_entry:
@@ -560,7 +564,7 @@ class CreateSignal:
                     'name': str(row['name']),
                     'symbol': str(row['symbol']),
                     'saved_csv': str_saved_csv,
-                    'signal': str(func(row))
+                    'signal': str(df.iloc[-1]['pos'])
                 }
 
                 new_row_df = pd.DataFrame([new_row])
