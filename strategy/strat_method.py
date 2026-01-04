@@ -357,8 +357,6 @@ class CreateSignal:
         # 趨勢線 (移動平均) trend ma
         raw_df['trend_ma'] = raw_df['close'].rolling(window=ma_rol).mean()
 
-
-
         # ATR (平均真實波幅)
         raw_df['high_low'] = raw_df['high'] - raw_df['low']
         raw_df['high_close'] = abs(raw_df['high'] - raw_df['close'].shift(1))
@@ -374,8 +372,6 @@ class CreateSignal:
                 (df['close'] - df['close'].rolling(rol).mean()) /
                 df['close'].rolling(rol).std()
         )
-
-        print(df.tail(5))
 
         # 初始化追蹤欄位
         df['pos'] = 0                                       # 持倉方向 (1=Long, -1=Short, 0=空倉)
